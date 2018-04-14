@@ -37,9 +37,19 @@ class SmsBroadcastMixin(models.TransientModel):
         if not match: return None
         return "61" + match.group("number")
 
+    def _apply_mixin_ir_defaults(self, fields, result):
+        ir_defaults = self.env['ir.default'].get_model_defaults('sms.broadcast.mixin')
+        for name in set(fields) - set(result):
+            if name in ir_defaults:
+                result[name] = ir_defaults[name]
+                continue
+        return result
+
     @api.model
     def default_get(self, fields):
         result = super(SmsBroadcastMixin, self).default_get(fields)
+        result = self._apply_mixin_ir_defaults(fields, result)
+
         active_model = self.env.context.get('active_model')
         model = self.env[active_model]
 
@@ -71,7 +81,6 @@ class SmsBroadcastMixin(models.TransientModel):
             'from': self.reply_to(),
             'message': self.message(),
         }
-
 
         encoded_params = urllib.parse.urlencode(params).encode("utf-8")
         base_url = "https://api.smsbroadcast.com.au/api-adv.php"
